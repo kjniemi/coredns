@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	pool "gopkg.in/fatih/pool.v2"
+
 	"github.com/miekg/coredns/middleware"
 
 	"github.com/miekg/dns"
@@ -14,17 +16,11 @@ import (
 
 var errUnreachable = errors.New("unreachable backend")
 
-// Proxy represents a middleware instance that can proxy requests.
+// Proxy represents a middleware instance that can proxy requests to another DNS server.
 type Proxy struct {
 	Next      middleware.Handler
-	Client    Client
+	Client    *Client
 	Upstreams []Upstream
-}
-
-// Client represents client information that the proxy uses.
-type Client struct {
-	UDP *dns.Client
-	TCP *dns.Client
 }
 
 // Upstream manages a pool of proxy upstream hosts. Select should return a
@@ -52,6 +48,9 @@ type UpstreamHost struct {
 	Unhealthy         bool
 	CheckDown         UpstreamHostDownFunc
 	WithoutPathPrefix string
+
+	UDPPool pool.Pool
+	TCPPool pool.Pool
 }
 
 // Down checks whether the upstream host is down or not.
@@ -82,12 +81,15 @@ func (p Proxy) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 			if host == nil {
 				return dns.RcodeServerFailure, errUnreachable
 			}
-			reverseproxy := ReverseProxy{Host: host.Name, Client: p.Client, Options: upstream.Options()}
 
 			atomic.AddInt64(&host.Conns, 1)
-			backendErr := reverseproxy.ServeDNS(w, r, nil)
+
+			reply, backendErr := p.Client.ServeDNS(w, r, host)
+
 			atomic.AddInt64(&host.Conns, -1)
+
 			if backendErr == nil {
+				w.WriteMsg(reply)
 				return 0, nil
 			}
 			timeout := host.FailTimeout
@@ -105,19 +107,5 @@ func (p Proxy) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 	return p.Next.ServeDNS(ctx, w, r)
 }
 
-// Clients returns the new client for proxy requests.
-func Clients() Client {
-	udp := newClient("udp", defaultTimeout)
-	tcp := newClient("tcp", defaultTimeout)
-	return Client{UDP: udp, TCP: tcp}
-}
-
-// newClient returns a new client for proxy requests.
-func newClient(net string, timeout time.Duration) *dns.Client {
-	if timeout == 0 {
-		timeout = defaultTimeout
-	}
-	return &dns.Client{Net: net, ReadTimeout: timeout, WriteTimeout: timeout, SingleInflight: true}
-}
-
+// defaultTimeout is the default networking timeout for DNS requests.
 const defaultTimeout = 5 * time.Second
