@@ -144,12 +144,14 @@ func readMsgHeader(co net.Conn, hdr *dns.Header, udpsize uint16) ([]byte, error)
 		p = make([]byte, l)
 		n, err = tcpRead(r, p)
 	default:
+		r := t.(io.Reader)
+
 		if udpsize > dns.MinMsgSize {
 			p = make([]byte, udpsize)
 		} else {
 			p = make([]byte, dns.MinMsgSize)
 		}
-		n, err = Read(co, p)
+		n, err = udpRead(r, p)
 	}
 
 	if err != nil {
@@ -202,33 +204,11 @@ func tcpRead(t io.Reader, p []byte) (int, error) {
 	return n, err
 }
 
-// Read implements the net.Conn read method.
-func Read(co net.Conn, p []byte) (n int, err error) {
-	if co == nil {
-		return 0, dns.ErrConnEmpty
-	}
+func udpRead(t io.Reader, p []byte) (n int, err error) {
 	if len(p) < 2 {
 		return 0, io.ErrShortBuffer
 	}
-	switch t := co.(type) {
-	case *net.TCPConn, *tls.Conn:
-		r := t.(io.Reader)
-
-		l, err := tcpMsgLen(r)
-		if err != nil {
-			return 0, err
-		}
-		if l > len(p) {
-			return int(l), io.ErrShortBuffer
-		}
-		return tcpRead(r, p[:l])
-	}
-	// UDP connection
-	n, err = Read(co, p)
-	if err != nil {
-		return n, err
-	}
-	return n, err
+	return t.Read(p)
 }
 
 // WriteMsg sends a message through the connection co.

@@ -90,7 +90,7 @@ func BenchmarkLookupProxy(b *testing.B) {
 	log.SetOutput(ioutil.Discard)
 
 	p := proxy.New([]string{udp})
-	state := middleware.State{W: &test.ResponseWriter{}, Req: new(dns.Msg)}
+	state := request.Request{W: &test.ResponseWriter{}, Req: new(dns.Msg)}
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
