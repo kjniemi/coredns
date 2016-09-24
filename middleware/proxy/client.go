@@ -34,14 +34,17 @@ func (c *Client) ServeDNS(w dns.ResponseWriter, r *dns.Msg, u *UpstreamHost) (*d
 	)
 
 	if request.Proto(w) == "tcp" {
-		co, _ = u.TCPPool.Get()
-		// err ??? dial ourselves?
+		co, err = u.TCPPool.Get()
 	} else {
-		co, _ = u.UDPPool.Get()
-		// err ??? dial ourselves?
+		co, err = u.UDPPool.Get()
+	}
+	if err != nil {
+		return nil, err
 	}
 
 	reply, _, err := c.Exchange(r, co)
+
+	co.Close()
 
 	if reply != nil && reply.Truncated {
 		// Suppress proxy error for truncated responses
@@ -54,7 +57,8 @@ func (c *Client) ServeDNS(w dns.ResponseWriter, r *dns.Msg, u *UpstreamHost) (*d
 
 	reply.Compress = true
 	reply.Id = r.Id
-	return reply, err
+
+	return reply, nil
 }
 
 func (c *Client) Exchange(m *dns.Msg, co net.Conn) (*dns.Msg, time.Duration, error) {
@@ -76,11 +80,17 @@ func (c *Client) Exchange(m *dns.Msg, co net.Conn) (*dns.Msg, time.Duration, err
 	})
 
 	rtt := time.Since(start)
+	if err != nil {
+		return &dns.Msg{}, rtt, err
+	}
 
-	return r.(*dns.Msg), rtt, err
+	r1 := r.(dns.Msg)
+	return &r1, rtt, nil
 }
 
-func (c *Client) exchange(m *dns.Msg, co net.Conn, udpsize uint16) (r *dns.Msg, err error) {
+// exchange does *not* return a pointer to dns.Msg because that leads to buffer reuse when
+// group.Do is used in Exchange.
+func (c *Client) exchange(m *dns.Msg, co net.Conn, udpsize uint16) (dns.Msg, error) {
 	opt := m.IsEdns0()
 
 	// If EDNS0 is used use that for size.
@@ -89,17 +99,20 @@ func (c *Client) exchange(m *dns.Msg, co net.Conn, udpsize uint16) (r *dns.Msg, 
 	}
 
 	co.SetWriteDeadline(deadline(c.Timeout))
-	if err = WriteMsg(co, m); err != nil {
-		return nil, err
+	if err := WriteMsg(co, m); err != nil {
+		return dns.Msg{}, err
 	}
 
 	co.SetReadDeadline(deadline(c.Timeout))
-	r, err = ReadMsg(co, udpsize)
+	r, err := ReadMsg(co, udpsize)
 	if err == nil && r.Id != m.Id {
 		err = dns.ErrId
 	}
+	if err != nil {
+		return dns.Msg{}, err
+	}
 
-	return r, err
+	return *r, nil
 }
 
 // ReadMsg reads a message from the connection co.
