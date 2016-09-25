@@ -4,7 +4,7 @@
 
 ## Syntax
 
-~~~
+~~~ txt
 cache [ttl] [zones...]
 ~~~
 
@@ -14,6 +14,24 @@ cache [ttl] [zones...]
 
 Each element in the cache is cached according to its TTL. For the negative cache, the SOA's MinTTL
 value is used.
+
+or
+
+~~~ txt
+cache [ttl] [zones...] {
+    postive limit [ttl]
+    negative limit [ttl]
+    prefetch [number]
+}
+~~~
+
+* `ttl`  and `zones` as above.
+* `positive`, override the settings for caching positive responses, limit indicates the maximum
+  number of packets we cache before we start evicting (LRU). Ttl overrides the cache TTL.
+* `negative`, override the settings for caching negative responses, limit indicates the maximum
+  number of packets we cache before we start evicting (LRU). Ttl overrides the cache TTL.
+* `prefetch` will prefetch responses before they time out. If "number" requests are seen for
+  a particular name... Bla or make it a percentage?? Prefetch 10% of the most popular ones?
 
 A cache mostly makes sense with a middleware that is potentially slow (e.g., a proxy that retrieves an
 answer), or to minimize backend queries for middleware like etcd. Using a cache with the file
