@@ -13,7 +13,7 @@ cache [ttl] [zones...]
 * `zones` zones it should cache for. If empty, the zones from the configuration block are used.
 
 Each element in the cache is cached according to its TTL. For the negative cache, the SOA's MinTTL
-value is used.
+value is used. A cache can contain up to 10,000 items by default.
 
 or
 

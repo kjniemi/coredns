@@ -47,6 +47,10 @@ func cacheParse(c *caddy.Controller) (int, []string, error) {
 				// first args may be just a number, then it is the ttl, if not it is a zone
 				t := origins[0]
 				ttl, err = strconv.Atoi(t)
+				if len(args) > 1 && err != nil {
+					// first arg should be number, but isn't
+					return 0, nil, err
+				}
 				if err == nil {
 					origins = origins[1:]
 					if len(origins) == 0 {
