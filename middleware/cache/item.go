@@ -58,15 +58,15 @@ func (i *item) toMsg(m *dns.Msg) *dns.Msg {
 	m1.Extra = i.Extra
 
 	ttl := int(i.origTTL) - int(time.Now().UTC().Sub(i.stored).Seconds())
-	if ttl < baseTTL {
-		ttl = baseTTL
+	if ttl < minTTL {
+		ttl = minTTL
 	}
-	setCap(m1, uint32(ttl))
+	setTTL(m1, uint32(ttl))
 	return m1
 }
 
-// setCap sets the ttl on all RRs in all sections.
-func setCap(m *dns.Msg, ttl uint32) {
+// setTTL sets the ttl on all RRs in all sections.
+func setTTL(m *dns.Msg, ttl uint32) {
 	for _, r := range m.Answer {
 		r.Header().Ttl = uint32(ttl)
 	}

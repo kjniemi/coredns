@@ -10,7 +10,7 @@ import (
 )
 
 // ServeDNS implements the middleware.Handler interface.
-func (c Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
+func (c *Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (int, error) {
 	state := request.Request{W: w, Req: r}
 
 	qname := state.Name()
@@ -32,11 +32,11 @@ func (c Cache) ServeDNS(ctx context.Context, w dns.ResponseWriter, r *dns.Msg) (
 	}
 	cacheMissCount.WithLabelValues(zone).Inc()
 
-	crr := NewCachingResponseWriter(w, c.cache, c.cap)
+	crr := &ResponseWriter{w, c}
 	return c.Next.ServeDNS(ctx, crr, r)
 }
 
-func (c Cache) get(qname string, qtype uint16, do bool) (*item, bool) {
+func (c *Cache) get(qname string, qtype uint16, do bool) (*item, bool) {
 	nxdomain := nameErrorKey(qname, do)
 	if i, ok := c.cache.Get(nxdomain); ok {
 		return i.(*item), true

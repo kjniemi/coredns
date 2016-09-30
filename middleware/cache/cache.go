@@ -8,21 +8,22 @@ import (
 	"github.com/miekg/coredns/middleware"
 	"github.com/miekg/coredns/middleware/pkg/response"
 
+	"github.com/hashicorp/golang-lru"
 	"github.com/miekg/dns"
-	gcache "github.com/patrickmn/go-cache"
 )
 
 // Cache is middleware that looks up responses in a cache and caches replies.
 type Cache struct {
 	Next  middleware.Handler
 	Zones []string
-	cache *gcache.Cache
-	cap   time.Duration
-}
 
-// NewCache returns a new cache.
-func NewCache(ttl int, zones []string, next middleware.Handler) Cache {
-	return Cache{Next: next, Zones: zones, cache: gcache.New(defaultDuration, purgeDuration), cap: time.Duration(ttl) * time.Second}
+	ncache *lru.Cache
+	ncap   int
+	nttl   time.Duration
+
+	pcache *lru.Cache
+	pcap   int
+	pttl   time.Duration
 }
 
 func cacheKey(m *dns.Msg, t response.Type, do bool) string {
@@ -50,13 +51,7 @@ func cacheKey(m *dns.Msg, t response.Type, do bool) string {
 // ResponseWriter is a response writer that caches the reply message.
 type ResponseWriter struct {
 	dns.ResponseWriter
-	cache *gcache.Cache
-	cap   time.Duration
-}
-
-// NewCachingResponseWriter returns a new ResponseWriter.
-func NewCachingResponseWriter(w dns.ResponseWriter, cache *gcache.Cache, cap time.Duration) *ResponseWriter {
-	return &ResponseWriter{w, cache, cap}
+	*Cache
 }
 
 // WriteMsg implements the dns.ResponseWriter interface.
@@ -68,10 +63,13 @@ func (c *ResponseWriter) WriteMsg(res *dns.Msg) error {
 	}
 
 	key := cacheKey(res, mt, do)
-	c.set(res, key, mt)
+	if key != "" {
+		c.set(res, key, mt)
+	}
 
+	// switch mt
 	if c.cap != 0 {
-		setCap(res, uint32(c.cap.Seconds()))
+		setTTL(res, uint32(c.cap.Seconds()))
 	}
 
 	return c.ResponseWriter.WriteMsg(res)
@@ -91,16 +89,17 @@ func (c *ResponseWriter) set(m *dns.Msg, key string, mt response.Type) {
 		}
 		i := newItem(m, duration)
 
-		c.cache.Set(key, i, duration)
+		c.pcache.Add(key, i)
 	case response.NameError, response.NoData:
 		if c.cap == 0 {
 			duration = minTTL(m.Ns, mt)
 		}
 		i := newItem(m, duration)
 
-		c.cache.Set(key, i, duration)
+		c.ncache.Add(key, i)
 	case response.OtherError:
 		// don't cache these
+		// TODO(miek): what do we do with these?
 	default:
 		log.Printf("[WARNING] Caching called with unknown middleware MsgType: %d", mt)
 	}
@@ -119,7 +118,7 @@ func (c *ResponseWriter) Hijack() {
 	return
 }
 
-func minTTL(rrs []dns.RR, mt response.Type) time.Duration {
+func minMsgTTL(rrs []dns.RR, mt response.Type) time.Duration {
 	if mt != response.Success && mt != response.NameError && mt != response.NoData {
 		return 0
 	}
@@ -141,8 +140,9 @@ func minTTL(rrs []dns.RR, mt response.Type) time.Duration {
 }
 
 const (
-	purgeDuration          = 1 * time.Minute
-	defaultDuration        = 20 * time.Minute
-	baseTTL                = 5 // minimum TTL that we will allow
-	maxTTL          uint32 = 2 * 3600
+	maxTTL uint32 = 2 * 3600
+	minTTL        = 5
+
+	defaultTTL = 0     // use RR's ttl
+	defaultCap = 10000 // default capacity of the cache.
 )

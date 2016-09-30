@@ -19,25 +19,22 @@ or
 
 ~~~ txt
 cache [ttl] [zones...] {
-    postive limit [ttl]
-    negative limit [ttl]
-    prefetch [number]
+    postive capacity [ttl]
+    negative capacity [ttl]
 }
 ~~~
 
 * `ttl`  and `zones` as above.
-* `positive`, override the settings for caching positive responses, limit indicates the maximum
-  number of packets we cache before we start evicting (LRU). Ttl overrides the cache TTL.
-* `negative`, override the settings for caching negative responses, limit indicates the maximum
-  number of packets we cache before we start evicting (LRU). Ttl overrides the cache TTL.
-* `prefetch` will prefetch responses before they time out. If "number" requests are seen for
-  a particular name... Bla or make it a percentage?? Prefetch 10% of the most popular ones?
+* `positive`, override the settings for caching positive responses, capacity indicates the maximum
+  number of packets we cache before we start evicting (LRU). Ttl overrides the cache maximum TTL.
+* `negative`, override the settings for caching negative responses, capacity indicates the maximum
+  number of packets we cache before we start evicting (LRU). Ttl overrides the cache maximum TTL.
 
 A cache mostly makes sense with a middleware that is potentially slow (e.g., a proxy that retrieves an
 answer), or to minimize backend queries for middleware like etcd. Using a cache with the file
 middleware essentially doubles the memory load with no conceivable increase of query speed.
 
-The minimum TTL allowed on resource records is 5 seconds.
+The minimum TTL allowed on resource records is 5 seconds. The default TTL is 360 (5 minutes).
 
 If monitoring is enabled (via the `prometheus` directive) then the following extra metrics are added:
 * coredns_cache_hit_count_total, and
