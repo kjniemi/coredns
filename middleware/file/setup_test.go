@@ -1,35 +1,25 @@
 package file
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
+
+	"github.com/miekg/coredns/middleware/test"
 
 	"github.com/mholt/caddy"
 )
 
 func TestFileParse(t *testing.T) {
-	zonePath, err := ioutil.TempDir("", "TestFilePath")
+	zoneFileName1, rm, err := test.TempFile(".", dbMiekNL)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll(zonePath)
+	defer rm()
 
-	zoneFile1, err := ioutil.TempFile(zonePath, "zone1-")
+	zoneFileName2, rm, err := test.TempFile(".", dbDnssexNLSigned)
 	if err != nil {
 		t.Fatal(err)
 	}
-	zoneFileName1 := zoneFile1.Name()
-	zoneFile1.Write([]byte(dbMiekNL))
-	zoneFile1.Close()
-
-	zoneFile2, err := ioutil.TempFile(zonePath, "zone2-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	zoneFileName2 := zoneFile2.Name()
-	zoneFile2.Write([]byte(dbDnssexNLSigned))
-	zoneFile2.Close()
+	defer rm()
 
 	tests := []struct {
 		inputFileRules string
