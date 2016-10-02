@@ -31,9 +31,6 @@ func New(hosts []string) Proxy {
 			Fails:       0,
 			FailTimeout: upstream.FailTimeout,
 
-			UDPPool: NewUDPPool(host),
-			TCPPool: NewTCPPool(host),
-
 			Unhealthy: false,
 			CheckDown: func(upstream *staticUpstream) UpstreamHostDownFunc {
 				return func(uh *UpstreamHost) bool {
