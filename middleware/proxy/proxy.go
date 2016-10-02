@@ -6,8 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	pool "gopkg.in/fatih/pool.v2"
-
 	"github.com/miekg/coredns/middleware"
 
 	"github.com/miekg/dns"
@@ -48,9 +46,6 @@ type UpstreamHost struct {
 	Unhealthy         bool
 	CheckDown         UpstreamHostDownFunc
 	WithoutPathPrefix string
-
-	UDPPool pool.Pool
-	TCPPool pool.Pool
 }
 
 // Down checks whether the upstream host is down or not.
