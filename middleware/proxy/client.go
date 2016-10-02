@@ -90,5 +90,8 @@ func (c *Client) exchange(m *dns.Msg, co net.Conn) (dns.Msg, error) {
 	dnsco.WriteMsg(m)
 	r, err := dnsco.ReadMsg()
 	dnsco.Close()
+	if r == nil {
+		return dns.Msg{}, err
+	}
 	return *r, err
 }
