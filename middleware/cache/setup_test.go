@@ -19,22 +19,26 @@ func TestSetup(t *testing.T) {
 		{`cache`, false, defaultCap, defaultCap, maxNTTL, maxTTL},
 		{`cache {}`, false, defaultCap, defaultCap, maxNTTL, maxTTL},
 		{`cache example.nl {
-			positive 10
+			noerror 10
 		}`, false, defaultCap, 10, maxNTTL, maxTTL},
 		{`cache example.nl {
-			positive 10
-			negative 10 15
+			noerror 10
+			denial 10 15
 		}`, false, 10, 10, 15 * time.Second, maxTTL},
 		{`cache 25 example.nl {
-			positive 10
-			negative 10 15
+			noerror 10
+			denial 10 15
 		}`, false, 10, 10, 15 * time.Second, 25 * time.Second},
 		{`cache aaa example.nl`, false, defaultCap, defaultCap, maxNTTL, maxTTL},
 
 		// fails
 		{`cache example.nl {
-			positive
-			negative 10 15
+			noerror
+			denial 10 15
+		}`, true, defaultCap, defaultCap, maxTTL, maxTTL},
+		{`cache example.nl {
+			noerror 15
+			denial aaa
 		}`, true, defaultCap, defaultCap, maxTTL, maxTTL},
 		{`cache example.nl {
 			positive 15
