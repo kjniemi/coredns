@@ -4,7 +4,8 @@ import "github.com/miekg/dns"
 
 // Elem is an element in the tree.
 type Elem struct {
-	m map[uint16][]dns.RR
+	m    map[uint16][]dns.RR
+	name string // owner name
 }
 
 // newElem returns a new elem.
@@ -34,10 +35,23 @@ func (e *Elem) All() []dns.RR {
 
 // Name returns the name for this node.
 func (e *Elem) Name() string {
+	if e.name != "" {
+		return e.name
+	}
 	for _, rrs := range e.m {
-		return rrs[0].Header().Name
+		e.name = rrs[0].Header().Name
+		return e.name
 	}
 	return ""
+}
+
+// Wildcard returns true if this name starts with a wildcard label (*.)
+func (e *Elem) IsWildcard() bool {
+	n := e.Name()
+	if len(n) < 2 {
+		return false
+	}
+	return n[0] == '*' && n[1] == '.'
 }
 
 // Insert inserts rr into e. If rr is equal to existing rrs this is a noop.
