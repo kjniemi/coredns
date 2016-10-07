@@ -20,6 +20,12 @@ var wildcardTestCases = []test.Case{
 		},
 	},
 	{
+		Qname: "a.wild.dnssex.nl.", Qtype: dns.TypeTXT,
+		Answer: []dns.RR{
+			test.TXT(`a.wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
+		},
+	},
+	{
 		Qname: "wild.dnssex.nl.", Qtype: dns.TypeTXT, Do: true,
 		Answer: []dns.RR{
 			test.RRSIG("wild.dnssex.nl.	1800	IN	RRSIG	TXT 8 2 1800 20160428190224 20160329190224 14460 dnssex.nl. FUZSTyvZfeuuOpCm"),
@@ -27,22 +33,28 @@ var wildcardTestCases = []test.Case{
 		},
 		Extra: []dns.RR{test.OPT(4096, true)},
 	},
-	// nodata reponse
-	/*
-		{
-			Qname: "wild.dnssex.nl.", Qtype: dns.TypeSRV,
-			Answer: []dns.RR{
-				test.TXT(`wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
-			},
+	{
+		Qname: "a.wild.dnssex.nl.", Qtype: dns.TypeTXT, Do: true,
+		Answer: []dns.RR{
+			test.RRSIG("a.wild.dnssex.nl.	1800	IN	RRSIG	TXT 8 2 1800 20160428190224 20160329190224 14460 dnssex.nl. FUZSTyvZfeuuOpCm"),
+			test.TXT(`a.wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
 		},
-		{
-			Qname: "wild.dnssex.nl.", Qtype: dns.TypeSRV, Do: true,
-			Answer: []dns.RR{
-				test.RRSIG("wild.dnssex.nl.	1800	IN	RRSIG	TXT 8 2 1800 20160428190224 20160329190224 14460 dnssex.nl. FUZSTyvZfeuuOpCm"),
-				test.TXT(`wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
-			},
+		Extra: []dns.RR{test.OPT(4096, true)},
+	},
+	// nodata responses
+	{
+		Qname: "wild.dnssex.nl.", Qtype: dns.TypeSRV,
+		Answer: []dns.RR{
+			test.TXT(`wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
 		},
-	*/
+	},
+	{
+		Qname: "wild.dnssex.nl.", Qtype: dns.TypeSRV, Do: true,
+		Answer: []dns.RR{
+			test.RRSIG("wild.dnssex.nl.	1800	IN	RRSIG	TXT 8 2 1800 20160428190224 20160329190224 14460 dnssex.nl. FUZSTyvZfeuuOpCm"),
+			test.TXT(`wild.dnssex.nl.	1800	IN	TXT	"Doing It Safe Is Better"`),
+		},
+	},
 }
 
 func TestLookupWildcard(t *testing.T) {
